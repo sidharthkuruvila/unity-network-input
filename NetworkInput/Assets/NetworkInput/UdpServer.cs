@@ -52,7 +52,7 @@ public class SynchronizedCircularQueue<T> {
 
 public class UdpServerWorker {
 
-	public SynchronizedCircularQueue<Vector3> queue = new SynchronizedCircularQueue<Vector3>(1024);
+	public SynchronizedCircularQueue<HandInfo> queue = new SynchronizedCircularQueue<HandInfo>(1024);
 
 	// This method will be called when the thread is started. 
 	public void DoWork()
@@ -65,9 +65,12 @@ public class UdpServerWorker {
 		while(!_shouldStop)
 		{
 			byte[] data = newsock.Receive(ref sender);
-			var l = Encoding.ASCII.GetString (data, 0, data.Length).Split (new char[] {','});
-			var v = new Vector3(float.Parse (l[0]), float.Parse (l[1]), float.Parse (l[2]));
-			queue.enqueue (v);
+			var s = Encoding.ASCII.GetString (data, 0, data.Length);
+			var d = JsonUtility.FromJson<TransferData>(s);
+			var hi = new HandInfo ();
+			hi.left = readHand (d.left);
+			hi.right = readHand (d.right);
+			queue.enqueue (hi);
 		}
 
 		Debug.Log ("worker thread: terminating gracefully.");
@@ -79,14 +82,22 @@ public class UdpServerWorker {
 	// Volatile is used as hint to the compiler that this data 
 	// member will be accessed by multiple threads. 
 	private volatile bool _shouldStop;
+
+	private Vector3 readHand(HandsInfo hi){
+		return new Vector3(hi.x/100, hi.y/100, hi.z/100);
+	}
 }
+
 
 [AddComponentMenu("NetworkInput/NetworkInput")]
 public class UdpServer : MonoBehaviour {
 	public UdpServerWorker udpServerWorker;
 
 	[SerializeField]
-	public GameObject gameObject;
+	public GameObject leftHand;
+
+	[SerializeField]
+	public GameObject rightHand;
 
 
 
@@ -103,9 +114,10 @@ public class UdpServer : MonoBehaviour {
 
 	// Update is called once per frame
 	void Update () {
-		Vector3 res;
+		HandInfo res;
 		while(udpServerWorker.queue.dequeue(out res)){
-			gameObject.transform.position = res;
+			leftHand.transform.position = res.left;
+			rightHand.transform.position = res.right;
 		}
 	}
 
@@ -115,4 +127,20 @@ public class UdpServer : MonoBehaviour {
 		//We need to abort because newSock.Receive is blocking. Come up with a way to remove this
 		udpServerThread.Abort ();
 	}
+}
+[Serializable]
+public class HandsInfo {
+	public float x, y, z;
+}
+[Serializable]
+public class TransferData {
+	public long seq;
+	public HandsInfo left;
+	public HandsInfo right;
+}
+
+
+public class HandInfo {
+	public Vector3 left;
+	public Vector3 right;
 }
