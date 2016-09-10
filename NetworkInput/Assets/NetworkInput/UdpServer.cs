@@ -68,8 +68,12 @@ public class UdpServerWorker {
 			var s = Encoding.ASCII.GetString (data, 0, data.Length);
 			var d = JsonUtility.FromJson<TransferData>(s);
 			var hi = new HandInfo ();
-			hi.left = readHand (d.left);
-			hi.right = readHand (d.right);
+			if (d.left != null) {
+				hi.left = readHand (d.left);
+			}
+			if (d.right != null) {
+				hi.right = readHand (d.right);
+			}
 			queue.enqueue (hi);
 		}
 
@@ -84,7 +88,7 @@ public class UdpServerWorker {
 	private volatile bool _shouldStop;
 
 	private Vector3 readHand(HandsInfo hi){
-		return new Vector3(hi.x/100, hi.y/100, hi.z/100);
+		return new Vector3(1 + hi.x/100, 9 - hi.z/100, hi.y/100);
 	}
 }
 
